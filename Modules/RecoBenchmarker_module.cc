@@ -1287,13 +1287,13 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
     if (fis_tracked[pos] == true ) std::cout << "Tracked particle matched to a shower?!?! >>>>>> SEEMS WRONG!!!" << std::endl;
     
     std::cout << "FOUND A SHOWER!!! >>>>>>>>> pdg=" << thisMcp->PdgCode() << std::endl;
-    fis_shower_matched[pos] = true;
     h_shower_pdg->Fill( thisMcp->PdgCode() );
 	
     if (fis_shower_matched[pos] == true ) {
 	    std::cout << "Already matched to a shower!!!! Skipping." <<  std::endl;
 	    continue;
     }
+    fis_shower_matched[pos] = true;
     
     if ( fpdg[pos] == 2212 ) { //protons
 	    h_shower_proton_l->Fill( flength[pos] );
