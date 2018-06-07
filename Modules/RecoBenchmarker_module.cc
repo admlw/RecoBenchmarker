@@ -367,6 +367,8 @@ class recohelper::RecoBenchmarker : public art::EDAnalyzer {
    
    TH1D* hproton_nhits;
    TH1D* hproton_nhits_CP;
+   TH1D* hproton_nhits_all;
+   TH1D* hproton_nhits_CP_all;
    TH2D* hproton_nhits_theta_mu;
    TH2D* hproton_nhits_CP_theta_mu;
    
@@ -2322,6 +2324,8 @@ void recohelper::RecoBenchmarker::AllocateAnalysisHistograms() {
   
    hproton_nhits = tfs->make<TH1D>("proton_nhits","nhits for reco'ed protons; nhits",1000,0,1000); //reco efficiency protons vs kin E
    hproton_nhits_CP = tfs->make<TH1D>("proton_nhits_CP","Collection Plane nhits for reco'ed protons; nhits",1000,0,1000); //reco efficiency protons vs kin E
+   hproton_nhits_all = tfs->make<TH1D>("proton_nhits_all","nhits for ALL protons; nhits",1000,0,1000); //reco efficiency protons vs kin E
+   hproton_nhits_CP_all = tfs->make<TH1D>("proton_nhits_CP_all","Collection Plane nhits for ALL protons; nhits",1000,0,1000); //reco efficiency protons vs kin E
    hproton_nhits_theta_mu = tfs->make<TH2D>("proton_nhits_theta_mu","Proton nhits vs angle with muon; nhits; #theta",1000,0,1000,100,0, 3.1415);
    hproton_nhits_CP_theta_mu = tfs->make<TH2D>("proton_nhits_CP_theta_mu","Proton collection plane nhits vs angle with muon; nhits; #theta",1000,0,1000,100,0, 3.1415);
    
@@ -2596,6 +2600,8 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
 	    hproton_p_all->Fill( fp0[j] );
 	    hproton_l_all->Fill( flength[j] );
 	    hproton_kinE_all->Fill( fkinE[j] );
+   	    hproton_nhits_all->Fill( fnhits[j] );
+   	    hproton_nhits_CP_all->Fill( freco_mcp_collection_hits[j] );
 	    
 	    if ( abs( fcostheta_muon[j] ) > sqrt(3)/2. ) {
 	    hproton_l_all_angle1->Fill( flength[j] );
