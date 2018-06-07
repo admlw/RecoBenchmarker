@@ -1290,6 +1290,11 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
     fis_shower_matched[pos] = true;
     h_shower_pdg->Fill( thisMcp->PdgCode() );
 	
+    if (fis_shower_matched[pos] == true ) {
+	    std::cout << "Already matched to a shower!!!! Skipping." <<  std::endl;
+	    continue;
+    }
+    
     if ( fpdg[pos] == 2212 ) { //protons
 	    h_shower_proton_l->Fill( flength[pos] );
 	    h_shower_proton_kinE->Fill( fkinE[pos] );
