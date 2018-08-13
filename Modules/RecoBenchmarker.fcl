@@ -17,6 +17,7 @@ RecoBenchmarker: {
       MCHitLabel: "mchitfinder"
       IsVertexFitter: false
       VertexFitterLabel: "vertexfitterpandoraNu"
+      IsNue: false
 }
 
 END_PROLOG

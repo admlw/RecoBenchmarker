@@ -17,6 +17,10 @@ namespace rbutil{
     else return false;
 
   }
+
+  bool recoBenchmarkerUtility::is_neutrino (int pdg) {
+	  return ( std::abs(pdg)==14 || std::abs(pdg)==12 || std::abs(pdg)==16 );
+  }
   
   bool recoBenchmarkerUtility::isInTPC(const simb::MCParticle & a){
     

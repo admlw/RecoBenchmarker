@@ -77,6 +77,7 @@ class recohelper::RecoBenchmarker : public art::EDAnalyzer {
     void analyze(art::Event const & e) override;
 
     // Selected optional functions.
+
     void beginJob() override;
     void endJob() override;
 
@@ -93,6 +94,7 @@ class recohelper::RecoBenchmarker : public art::EDAnalyzer {
     std::string fClusterLabel;
     std::string fVertexFitterLabel;
     bool 	fIsVertexFitter;
+    bool 	fIsNue;
     std::string fHitLabel;
     std::string fMCTruthLabel;
     std::string fG4TruthLabel;
@@ -116,6 +118,7 @@ class recohelper::RecoBenchmarker : public art::EDAnalyzer {
     int fSubRun;
     int fccnc;
     int finteraction;
+    int fLeptonPdg;
 
     int nimID;
     int recoNimID;
@@ -229,91 +232,6 @@ class recohelper::RecoBenchmarker : public art::EDAnalyzer {
    void AllocateAnalysisHistograms();
    int FillAnalysisHistograms(int&, int&, bool&);
    void FillCumulativeHistograms();
-
-    // hit list stuff
-    std::vector< std::pair<int, float> >allHitPositions;
-    TH1D* hitMatchScore;
-
-    std::vector<int> matchIDChecker;
-
-    // trueVertexXZPosition
-    std::vector<float> trueVertexXZPosition;
-
-    // matching information
-    std::vector<int> isRecoTrackTruthMatched;
-    std::vector<int> isRecoShowerTruthMatched;
-
-    // length information
-    std::vector<double> thisRecoLength;
-    std::vector<double> thisMcpLength;
-    float thisMatchedLength;
-
-    // angular information
-
-    std::vector<double> thisMcpMomentum;
-    std::vector<double> nextMcpMomentum;
-    std::vector<double> nimMcpMomentum;
-    std::vector<double> thisMatchedMomentum;
-    std::vector<double> nextRecoMomentum;
-    std::vector<double> nimMatchedMomentum;
-
-    // Nim == Neutrino Induced Muon
-    std::vector<float> thisNimMcpAngles;
-    float thisNimMcpAngle;
-    std::vector<float> thisNimMcpAnglesXZ;
-    float thisNimMcpAngleXZ;
-    std::vector<float> thisNimMatchedMcpAngles;
-    float thisNimMatchedMcpAngle;
-    std::vector<float> thisNimMatchedMcpAnglesXZ;
-    float thisNimMatchedMcpAngleXZ;
-    float thisZmatchedAngleYZ;
-    float thisZDirMcpAngleYZ;
-
-    // efficiency plots and prerequisites
-    TH1D* muMatchedMcpMomentum;
-    TH1D* muMcpMomentum;
-    TH1D* muMomentumEfficiency;
-
-    TH2D* allMatchedMcpLengthAngle;
-    TH2D* allMcpLengthAngleYZ;
-    TH2D* allLengthAngleEfficiency;
-
-    TH1D* allMatchedMcpProjectedLength;
-    TH1D* allMcpProjectedLength;
-    TH1D* allProjectedLengthEfficiency;
-
-    TH1D* allMatchedMcpProjectedAngle;
-    TH1D* allMcpProjectedAngle;
-    TH1D* allProjectedAngleEfficiency;
-
-    TH2D* mupMatchedMcpAnglePMom;
-    TH2D* mupMcpAnglePMom;
-    TH2D* mupAngleMomentumEfficiency;
-
-    TH1D* pMatchedMcpProjectedMomentum;
-    TH1D* pMcpProjectedMomentum;
-    TH1D* pProjectedMomentumEfficiency;
-
-    TH1D* pMatchedMcpProjectedAngle;
-    TH1D* pMcpProjectedAngle;
-    TH1D* pProjectedAngleEfficiency;
-
-    // cleanliness plots
-    TH1D* showerCleanlinessPrimaryProton;
-    TH1D* showerCleanlinessPrimaryMuonOrPion;
-    TH1D* showerCleanlinessPrimaryElectron;
-    TH1D* showerCleanlinessConv;
-    TH1D* showerCleanlinessInelastic;
-    TH1D* showerCleanlinessMuIoni;
-    TH1D* showerCleanlinessOther;
-
-    TH1D* trackCleanlinessPrimaryProton;
-    TH1D* trackCleanlinessPrimaryMuonOrPion;
-    TH1D* trackCleanlinessPrimaryElectron;
-    TH1D* trackCleanlinessConv;
-    TH1D* trackCleanlinessInelastic;
-    TH1D* trackCleanlinessMuIoni;
-    TH1D* trackCleanlinessOther;
 
     // Simone's plots
     TH1D* hproton_multi_all;
@@ -606,6 +524,7 @@ recohelper::RecoBenchmarker::RecoBenchmarker(fhicl::ParameterSet const & p)
   fShowerLabel = p.get<std::string> ("ShowerLabel");
   fVertexFitterLabel = p.get<std::string> ("VertexFitterLabel");
   fIsVertexFitter = p.get<bool> ("IsVertexFitter");
+  fIsNue = p.get<bool> ("IsNue");
   fMCTruthLabel = p.get<std::string> ("MCTruthLabel");
   fG4TruthLabel = p.get<std::string> ("G4TruthLabel");
   fShowerTruthLabel = p.get<std::string> ("ShowerTruthLabel");
@@ -629,6 +548,7 @@ void recohelper::RecoBenchmarker::beginJob()
 
   //mctruth info
   recoTree->Branch("ccnc", &fccnc);
+  recoTree->Branch("isnue", &fIsNue);
   recoTree->Branch("interaction", &finteraction);
   recoTree->Branch("neutrino_x", &fneutrino_x);
   recoTree->Branch("neutrino_y", &fneutrino_y);
@@ -661,18 +581,6 @@ void recohelper::RecoBenchmarker::beginJob()
    recoTree->Branch("muon_range",&fmuon_range);
 
 
-  recoTree->Branch("isRecoTrackTruthMatched", &isRecoTrackTruthMatched);
-  recoTree->Branch("isRecoShowerTruthMatched", &isRecoShowerTruthMatched);
-
-  // mcp information
-  recoTree->Branch("thisNimMcpAngles", &thisNimMcpAngles);
-  recoTree->Branch("thisNimMcpAnglesXZ", &thisNimMcpAnglesXZ);
-  recoTree->Branch("thisMcpLength", &thisMcpLength);
-
-  // matched mcp information
-  recoTree->Branch("thisNimMatchedMcpAngles", &thisNimMatchedMcpAngles);
-  recoTree->Branch("thisNimMatchedMcpAnglesXZ", &thisNimMatchedMcpAnglesXZ);
-   
   //info coming from the tracking algorithm - when there is mc truth
   recoTree->Branch("nu_reco_x",&fnu_reco_x);
   recoTree->Branch("nu_reco_y",&fnu_reco_y);
@@ -726,54 +634,23 @@ void recohelper::RecoBenchmarker::beginJob()
   recoTree->Branch("clustered_mismatched_charge",&fclustered_mismatched_charge);
   recoTree->Branch("hit_mismatch_pdg",&fhit_mismatch_pdg);
 
+  if (fIsNue) fLeptonPdg = 11;
+  else fLeptonPdg = 13;
 
   AllocateAnalysisHistograms();
-
+  
   n_events = 0;
   tot_n_protons = 0;
   n_muons = 0;
   n_all_protons = 0;
   low_protons = 0;
    
-  // reconstructed information
-  recoTree->Branch("thisRecoLength", &thisRecoLength);
-
-  hitMatchScore = tfs->make<TH1D>("hitMatchScore", ";hitMatchScore Score;", 2, 0, 2);
-
-  muMatchedMcpMomentum = tfs->make<TH1D>("muMatchedMcpMomentum", ";#mu Momentum;", 20, 0, 3.5);
-  muMcpMomentum = tfs->make<TH1D>("muMcpMomentum", ";#mu Momentum;", 20, 0, 3.5);
-
-  allMatchedMcpLengthAngle = tfs->make<TH2D>("allMatchedMcpLengthAngle", ";#theta_{YZ} (degrees); Length (cm)", 20, 0, 180, 10, 0, 10);
-  allMcpLengthAngleYZ = tfs->make<TH2D>("allMcpLengthAngleYZ", ";#theta_{YZ} (degrees); Length (cm)", 20, 0, 180, 10, 0, 10);
-
-  mupMatchedMcpAnglePMom = tfs->make<TH2D>("mupMatchedMcpAnglePMom", ";#theta^{#mup}_{XZ} (degrees) ;P_{p} (Gev)", 20, 0, 180, 20, 0, 1);
-  mupMcpAnglePMom = tfs->make<TH2D>("mupMcpAnglePMom", ";#theta^{#mup}_{XZ};P_{p}", 20, 0, 180, 20, 0, 1);
-
-  // cleanliness plots
-  showerCleanlinessPrimaryProton = tfs->make<TH1D>("showerCleanlinessPrimaryProton", ";cleanliness;", 20, 0, 1);
-  showerCleanlinessPrimaryMuonOrPion = tfs->make<TH1D>("showerCleanlinessPrimaryMuonOrPion", ";cleanliness;", 20, 0, 1);
-  showerCleanlinessPrimaryElectron = tfs->make<TH1D>("showerCleanlinessPrimaryElectron", ";cleanliness;", 20, 0, 1);
-  showerCleanlinessConv = tfs->make<TH1D>("showerCleanlinessConv", ";cleanliness;", 20, 0, 1);
-  showerCleanlinessInelastic = tfs->make<TH1D>("showerCleanlinessInelastic", ";cleanliness;", 20, 0, 1);
-  showerCleanlinessMuIoni = tfs->make<TH1D>("showerCleanlinessMuIoni", ";cleanliness;", 20, 0, 1);
-  showerCleanlinessOther = tfs->make<TH1D>("showerCleanlinessOther", ";cleanliness;", 20, 0, 1);
-
-  trackCleanlinessPrimaryProton = tfs->make<TH1D>("trackCleanlinessPrimaryProton", ";cleanliness;", 20, 0, 1);
-  trackCleanlinessPrimaryMuonOrPion = tfs->make<TH1D>("trackCleanlinessPrimaryMuonOrPion", ";cleanliness;", 20, 0, 1);
-  trackCleanlinessPrimaryElectron = tfs->make<TH1D>("trackCleanlinessPrimaryElectron", ";cleanliness;", 20, 0, 1);
-  trackCleanlinessConv = tfs->make<TH1D>("trackCleanlinessConv", ";cleanliness;", 20, 0, 1);
-  trackCleanlinessInelastic = tfs->make<TH1D>("trackCleanlinessInelastic", ";cleanliness;", 20, 0, 1);
-  trackCleanlinessMuIoni = tfs->make<TH1D>("trackCleanlinessMuIoni", ";cleanliness;", 20, 0, 1);
-  trackCleanlinessOther = tfs->make<TH1D>("trackCleanlinessOther", ";cleanliness;", 20, 0, 1);
-
-
 }
 
 void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 {
   if (e.isRealData() == true) return;
  
-  //auto const* theDetector = lar::providerFrom<detinfo::DetectorPropertiesService>();
   auto const* SCE = lar::providerFrom<spacecharge::SpaceChargeService>();  
   bool space_charge = true;
 
@@ -784,61 +661,70 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 
   // get handles to objects of interest
 
+  //recob::Track
   art::ValidHandle< std::vector<recob::Track> > trackHandle = 
     e.getValidHandle< std::vector<recob::Track> > (fTrackLabel);
   std::vector< art::Ptr<recob::Track> > trackList;
-  //if (e.getByLabel( fTrackLabel, trackHandle))
     art::fill_ptr_vector(trackList, trackHandle); 
 
+  //mcps from tracks
   art::FindManyP<simb::MCParticle, anab::BackTrackerMatchingData> mcpsFromTracks(trackHandle, e, fTrackTruthLabel);
-  
+  //calorimetry from tracks
   art::FindManyP<anab::Calorimetry> caloFromTracks(trackHandle, e, fCalorimetryLabel);
 
+  //recob::Shower
   art::ValidHandle< std::vector<recob::Shower> > showerHandle =
     e.getValidHandle< std::vector<recob::Shower> >(fShowerLabel);
   std::vector< art::Ptr<recob::Shower> >  showerList;  
   art::fill_ptr_vector(showerList, showerHandle); 
 
+  //mcps from showers
   art::FindManyP<simb::MCParticle, anab::BackTrackerMatchingData> mcpsFromShowers(showerHandle, e, fShowerTruthLabel);
 
+  //mcps
   art::Handle< std::vector<simb::MCParticle> > mcParticleHandle; 
   std::vector< art::Ptr<simb::MCParticle> > mcList;
   if (e.getByLabel( fG4TruthLabel, mcParticleHandle))
     art::fill_ptr_vector(mcList, mcParticleHandle); 
-
+  
+  //mctruth
   art::Handle< std::vector<simb::MCTruth> > mcTruthHandle; 
   std::vector< art::Ptr<simb::MCTruth> > mcTruth;
   if (e.getByLabel( fMCTruthLabel, mcTruthHandle))
     art::fill_ptr_vector(mcTruth, mcTruthHandle); 
  
 
-  // cluster/hit handles
+  //recob::Cluster
   art::ValidHandle< std::vector< recob::Cluster > > clusterHandle = 
     e.getValidHandle< std::vector< recob::Cluster > >(fClusterLabel);
   std::vector< art::Ptr<recob::Cluster> > clusterList;
   art::fill_ptr_vector( clusterList, clusterHandle);
-
+  //hits from clusters
   art::FindManyP<recob::Hit> hitsFromClusters(clusterHandle, e, fClusterLabel);
-  
+  //recob::Hit
   art::ValidHandle< std::vector< recob::Hit > > hitHandle = 
     e.getValidHandle< std::vector< recob::Hit > >(fHitLabel);
   std::vector< art::Ptr<recob::Hit> > hitList;
   art::fill_ptr_vector( hitList, hitHandle);
 
+  //recob::PFParticles
   art::ValidHandle< std::vector< recob::PFParticle > > pfpHandle = 
     e.getValidHandle< std::vector< recob::PFParticle > >(fPfpLabel);
   std::vector< art::Ptr<recob::PFParticle> > pfpList;
   art::fill_ptr_vector( pfpList, pfpHandle);
 
+  //hits from tracks
   art::FindManyP<recob::Hit> hitsFromTracks( trackHandle, e, fTrackLabel);
+  //mcp from hit
   art::FindManyP<simb::MCParticle, anab::BackTrackerHitMatchingData> MCPfromhits( hitHandle, e, fHitAssnTruthLabel);
+  //hits from mcp
   art::FindManyP<recob::Hit, anab::BackTrackerHitMatchingData> hitsFromMCP( mcParticleHandle, e, fHitAssnTruthLabel);
   
   art::Handle< std::vector<sim::MCHitCollection> > mcHitHandle; 
   std::vector< art::Ptr<sim::MCHitCollection> > mcHitList;
   if (e.getByLabel( fMCHitLabel, mcHitHandle) )
     art::fill_ptr_vector(mcHitList, mcHitHandle); 
- 
+  //sim:SimChannel
   art::Handle< std::vector<sim::SimChannel> > simChannelHandle; 
   std::vector< art::Ptr<sim::SimChannel> > simChannelList;
   if (e.getByLabel( fG4TruthLabel, simChannelHandle) )
@@ -881,6 +767,7 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 
 #endif
   // first loop muons to find true neutrino induced muon (NIM)
+  // muon here is abused for muon or electron 
   nimID = -1;
   double muon_p = 0;
   double muon_px = 0;
@@ -893,11 +780,8 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
   for (unsigned i = 0; i < MCpFromMCtruth.at(n_truth).size();i++){
   //for ( auto const& thisMcp : mcList ){
     const art::Ptr< simb::MCParticle >& thisMcp = MCpFromMCtruth.at(n_truth).at(i);
-    if (std::abs(thisMcp->PdgCode()) == 13 && thisMcp->StatusCode()==1 && thisMcp->Mother()==0 && thisMcp->Process() == "primary" && _rbutilInstance.isInTPC(thisMcp) == true) {
+    if (std::abs(thisMcp->PdgCode()) == fLeptonPdg && thisMcp->StatusCode()==1 && thisMcp->Mother()==0 && thisMcp->Process() == "primary" && _rbutilInstance.isInTPC(thisMcp) == true) {
       nimID = thisMcp->TrackId();
-      nimMcpMomentum = _rbutilInstance.getMomentumVector(thisMcp);
-      muMcpMomentum->Fill(thisMcp->P());
-      trueVertexXZPosition = {(float)thisMcp->Vx(), (float)thisMcp->Vz()};
       muon_p = thisMcp->Momentum().Rho();
       muon_px = thisMcp->Momentum().X();
       muon_py = thisMcp->Momentum().Y();
@@ -909,7 +793,7 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
     }
   }
 
-  if (muon_p==0) mf::LogError(__FUNCTION__) << "Error! There must be at least 1 muon in this analysis! " << std::endl;
+  if (muon_p==0) mf::LogError(__FUNCTION__) << "Error! There must be at least 1 muon or electron in this analysis! " << std::endl;
  
   //now other MC particles
   for (unsigned i = 0; i < MCpFromMCtruth.at(n_truth).size(); i++){
@@ -917,12 +801,12 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
     
     //in case of NC, the neutrino is kept and thus we should drop it
     //if it's an electron, check if it's a Michel. If yes, keep it.
-    if ( !(std::abs(thisMcp->PdgCode()) == 11 && thisMcp->Mother() == muon_id && abs(thisMcp->Position().X()-muon_endx) < DBL_EPSILON &&
-		    abs(thisMcp->Position().Y()-muon_endy) < DBL_EPSILON && abs(thisMcp->Position().Z()-muon_endz) < DBL_EPSILON ) )
-    if ( std::abs(thisMcp->PdgCode()) == 14 || thisMcp->Process()!="primary" || thisMcp->StatusCode()!=1 || thisMcp->Mother()>0 ) continue; //we only want primaries
+    if ( !(std::abs(thisMcp->PdgCode()) == 11 && thisMcp->Mother() == muon_id && std::abs(thisMcp->Position().X()-muon_endx) < DBL_EPSILON &&
+		    std::abs(thisMcp->Position().Y()-muon_endy) < DBL_EPSILON && std::abs(thisMcp->Position().Z()-muon_endz) < DBL_EPSILON ) )
+    if ( _rbutilInstance.is_neutrino(thisMcp->PdgCode()) || thisMcp->Process()!="primary" || thisMcp->StatusCode()!=1 || thisMcp->Mother()>0 ) continue; //we only want primaries
 
-    if ( (std::abs(thisMcp->PdgCode()) == 11 && thisMcp->Mother() == muon_id && abs(thisMcp->Position().X()-muon_endx) < DBL_EPSILON &&
-		    abs(thisMcp->Position().Y()-muon_endy) < DBL_EPSILON && abs(thisMcp->Position().Z()-muon_endz) < DBL_EPSILON ) )
+    if ( !fIsNue && (std::abs(thisMcp->PdgCode()) == 11 && thisMcp->Mother() == muon_id && std::abs(thisMcp->Position().X()-muon_endx) < DBL_EPSILON &&
+		    std::abs(thisMcp->Position().Y()-muon_endy) < DBL_EPSILON && std::abs(thisMcp->Position().Z()-muon_endz) < DBL_EPSILON ) )
 	    std::cout << ">>>>>>>>>>>>>>>>>FOUND A MICHEL!!!!!" << std::endl;
 
 #if isDebug == 1
@@ -936,35 +820,6 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
         << std::endl;
 #endif
 
-    thisMcpLength.push_back(thisMcp->Trajectory().TotalLength());
-    thisMcpMomentum = _rbutilInstance.getMomentumVector(thisMcp);
-
-    // all tracks
-    if (thisMcp->Process() == "primary"){
-
-      std::vector<double> zDir = {0,0,1};
-
-      thisZDirMcpAngleYZ = _rbutilInstance.getAngle(zDir, thisMcpMomentum, _rbutilInstance, "yz");
-      allMcpLengthAngleYZ->Fill(thisZDirMcpAngleYZ, thisMcp->Trajectory().TotalLength());
-
-    }
-
-    // specifically protons
-    if ((thisMcp->PdgCode() == 2212) && (thisMcp->Process() == "primary") && (nimID !=-1)){
-
-      thisNimMcpAngle = 
-        _rbutilInstance.getAngle(thisMcpMomentum, nimMcpMomentum, _rbutilInstance, "no");
-      thisNimMcpAngles.push_back(thisNimMcpAngle);
-
-      thisNimMcpAngleXZ =
-        _rbutilInstance.getAngle(thisMcpMomentum, nimMcpMomentum, _rbutilInstance, "xz");
-      thisNimMcpAnglesXZ.push_back(thisNimMcpAngleXZ);
-
-      mupMcpAnglePMom->Fill(thisNimMcpAngleXZ, thisMcp->P());
-
-    }
-
-	
 	//count particle types
 	if (fparticle_count.find( thisMcp->PdgCode() ) == fparticle_count.end()) //not found
 	     fparticle_count[ thisMcp->PdgCode() ] = 1;
@@ -1114,9 +969,9 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
     for (auto const& thisMcp : mcps){
     
     //this if is necessary, since sometimes a particle is matched to a secondary (electron, etc) -> to be checked
-    if ( !(std::abs(thisMcp->PdgCode()) == 11 && thisMcp->Mother() == muon_id && abs(thisMcp->Position().X()-muon_endx) < DBL_EPSILON &&
-		    abs(thisMcp->Position().Y()-muon_endy) < DBL_EPSILON && abs(thisMcp->Position().Z()-muon_endz) < DBL_EPSILON ) )
-    if ( std::abs(thisMcp->PdgCode()) == 14 || thisMcp->Process()!="primary" || thisMcp->StatusCode()!=1 || thisMcp->Mother()>0 ) continue; //we only want primaries
+    if ( !(std::abs(thisMcp->PdgCode()) == 11 && thisMcp->Mother() == muon_id && std::abs(thisMcp->Position().X()-muon_endx) < DBL_EPSILON &&
+		    std::abs(thisMcp->Position().Y()-muon_endy) < DBL_EPSILON && std::abs(thisMcp->Position().Z()-muon_endz) < DBL_EPSILON ) )
+    if ( _rbutilInstance.is_neutrino(thisMcp->PdgCode()) || thisMcp->Process()!="primary" || thisMcp->StatusCode()!=1 || thisMcp->Mother()>0 ) continue; //we only want primaries
       
 #if isDebug == 1
       std::cout << "MATCHED PARTICLE: " << std::endl;
@@ -1174,7 +1029,7 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 	
 //	std::cout << "TRACK ID " << freco_trackid[pos] << " pos=" << pos << std::endl;
  	
-	if (thisMcp->PdgCode() == 13 ) { //for the muon, only when there is the info
+	if (thisMcp->PdgCode() == fLeptonPdg ) { //for the muon, only when there is the info
 		if (fmuon_dqdx.size()!=0) {
 			mf::LogError(__FUNCTION__) << "Calorimetry should be filled only once!!!! Clearing..." << std::endl;
 			fmuon_dqdx.clear();
@@ -1265,9 +1120,9 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
     for (auto const& thisMcp : mcps){
     
     //this if is necessary, since sometimes a particle is matched to a secondary (electron, etc) -> to be checked
-    if ( !(std::abs(thisMcp->PdgCode()) == 11 && thisMcp->Mother() == muon_id && abs(thisMcp->Position().X()-muon_endx) < DBL_EPSILON &&
-		    abs(thisMcp->Position().Y()-muon_endy) < DBL_EPSILON && abs(thisMcp->Position().Z()-muon_endz) < DBL_EPSILON ) )
-    if ( std::abs(thisMcp->PdgCode()) == 14 || thisMcp->Process()!="primary" || thisMcp->StatusCode()!=1 || thisMcp->Mother()>0 ) continue; //we only want primaries
+    if ( !(std::abs(thisMcp->PdgCode()) == 11 && thisMcp->Mother() == muon_id && std::abs(thisMcp->Position().X()-muon_endx) < DBL_EPSILON &&
+		    std::abs(thisMcp->Position().Y()-muon_endy) < DBL_EPSILON && std::abs(thisMcp->Position().Z()-muon_endz) < DBL_EPSILON ) )
+    if ( _rbutilInstance.is_neutrino(thisMcp->PdgCode()) || thisMcp->Process()!="primary" || thisMcp->StatusCode()!=1 || thisMcp->Mother()>0 ) continue; //we only want primaries
     
 #if isDebug == 1
       std::cout << "SHOWER MATCHED PARTICLE: " << std::endl;
@@ -1287,6 +1142,7 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 
     //save information on reco track
     if (fis_tracked[pos] == true ) std::cout << "Tracked particle matched to a shower?!?! >>>>>> SEEMS WRONG!!!" << std::endl;
+
     std::cout << "FOUND A SHOWER!!! >>>>>>>>> pdg=" << thisMcp->PdgCode() << std::endl;
     h_shower_pdg->Fill( thisMcp->PdgCode() );
     
@@ -1516,7 +1372,7 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 		       fnot_clustered_charge[mcp_index].push_back( hit->Integral() );
 		       //tracked particle, with a non-clustered hit
 			h_hits_not_clustered_tracked_charge->Fill ( hit->Integral() );
-		       if ( fis_tracked[mcp_index] ) { //check and fill histos for a MCP which is tracked
+		       if ( (!fIsNue && fis_tracked[mcp_index]) || (fIsNue && fis_shower_matched[mcp_index])  ) { //check and fill histos for a MCP which is tracked
 		        if (mcp_index==muon_pos) //is muon
 			h_hits_not_clustered_tracked_charge_muon->Fill ( hit->Integral() );
 			else if (fpdg[mcp_index] == 2212) //is proton
@@ -1545,7 +1401,7 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 			}//is spacepoint
 		       } else { //the particle is not tracked
 			
-				if ( fpdg[mcp_index] ==13 ) {
+				if ( fpdg[mcp_index] ==fLeptonPdg ) {
 				h_fraction_pdgs_not_tracked_not_clustered->Fill(0.,1./freco_mcp_collection_hits[mcp_index]); //muon
 			  	h_hits_not_clustered_not_tracked_charge_muon->Fill ( hit->Integral() );
 				if (is_spacepoint){
@@ -1618,15 +1474,17 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 		
 			//fpdg[mcp_index] is the particle truth matched to the hit
 			//mcp_track[mm] is the particle matched to the track associated to the cluster (to which the hit is clustered)
+			if ( !fIsNue ) {
 			if ( !fis_tracked[mcp_index] && track->ID() == freco_trackid[mcp_index] )
 				mf::LogError(__FUNCTION__) << "ERROR! This should never happen..." << std::endl;
+			}
 			
 			if ( track->ID() == freco_trackid[mcp_index] ) {
 					//the hit and track matching agree
 				fclustered_matched[mcp_index] = fclustered_matched[mcp_index] + 1;
 		                fclustered_matched_charge[mcp_index].push_back( hit->Integral() );
 			} else { //mismatch
-				if ( fpdg[mcp_index] == 13 && mcp_track[mm]->PdgCode()==13) {
+				if ( fpdg[mcp_index] == fLeptonPdg && mcp_track[mm]->PdgCode()==fLeptonPdg) {
 					std::cout << "Broken track!" << std::endl;
 					//std::cout << "trackid1 " << track->ID() << " trackid2 " << freco_trackid[mcp_index] << std::endl; 
 					//std::cout << "mcp_index " << mcp_index << " muon_index " << muon_pos << std::endl; 
@@ -1653,7 +1511,7 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
   for (unsigned jj=0; jj<fpdg.size(); jj++) {
 
 	  if ( count_not_tracked == 0 ) { //all protons above 20MeV are tracked
-	  if ( fpdg[jj]==13 ) {
+	  if ( fpdg[jj]==fLeptonPdg ) {
 		  if ( freco_mcp_collection_hits[jj] ) {
 		  h_muon_clustering_prob_good_protons->Fill(0., float(fnot_clustered[jj])/float(freco_mcp_collection_hits[jj]) );	
 		  h_muon_clustering_prob_good_protons->Fill(1., float(fclustered_matched[jj])/float(freco_mcp_collection_hits[jj]) );	
@@ -1755,7 +1613,7 @@ void recohelper::RecoBenchmarker::analyze(art::Event const & e)
 	  
 if ( count_not_tracked > 0 ) { //some are not tracked
 	  
-	if ( fpdg[jj]==13 ) { //the muon is tracked by definition
+	if ( fpdg[jj]==fLeptonPdg ) { //the muon is tracked by definition
 		  if ( freco_mcp_collection_hits[jj] ) {
 		  h_muon_clustering_prob_bad_protons->Fill(0., float(fnot_clustered[jj])/float(freco_mcp_collection_hits[jj]) );	
 		  h_muon_clustering_prob_bad_protons->Fill(1., float(fclustered_matched[jj])/float(freco_mcp_collection_hits[jj]) );	
@@ -1896,7 +1754,7 @@ if ( count_not_tracked > 0 ) { //some are not tracked
 }  //some are not tracked
 	  
   if ( is_lowmomentum_p ) { //only protons below 20MeV, none is tracked
-	if ( fpdg[jj]==13 ) { //the muon is tracked by definition
+	if ( fpdg[jj]==fLeptonPdg ) { //the muon is tracked by definition
 		  if ( freco_mcp_collection_hits[jj] ) {
 		  h_muon_clustering_prob_low_protons->Fill(0., float(fnot_clustered[jj])/float(freco_mcp_collection_hits[jj]) );	
 		  h_muon_clustering_prob_low_protons->Fill(1., float(fclustered_matched[jj])/float(freco_mcp_collection_hits[jj]) );	
@@ -1948,317 +1806,6 @@ if ( count_not_tracked > 0 ) { //some are not tracked
 
   } //loop on MCP for hit merging histograms
 	
-/*
-  //MC total amount of hits (or something like that)
-	  float tot_electrons = 0;
-  for ( auto const& simch: simChannelList ) {
-	  auto map = simch->TDCIDEMap();
-	  for (auto const& it: map) {
-		for (auto const& it2: it.second) 
-		  tot_electrons+=it2.numElectrons;	
-	  }
-  }
-
-
-    int all_hits_mcp = 0;
-    for (auto const& mccp: mcList) {
-    if ( !(std::abs(mccp->PdgCode()) == 11 && mccp->Mother() == muon_id && abs(mccp->Position().X()-muon_endx) < DBL_EPSILON &&
-		    abs(mccp->Position().Y()-muon_endy) < DBL_EPSILON && abs(mccp->Position().Z()-muon_endz) < DBL_EPSILON ) )
-    if ( std::abs(mccp->PdgCode()) == 14 || mccp->Process()!="primary" || mccp->StatusCode()!=1 || mccp->Mother()>0 ) continue; //we only want primaries
-    all_hits_mcp += hitsFromMCP.at( &mccp - &mcList[0] ).size();
-    }
-
-    for (auto const& mccp: mcList) {
-    if ( !(std::abs(mccp->PdgCode()) == 11 && mccp->Mother() == muon_id && abs(mccp->Position().X()-muon_endx) < DBL_EPSILON &&
-		    abs(mccp->Position().Y()-muon_endy) < DBL_EPSILON && abs(mccp->Position().Z()-muon_endz) < DBL_EPSILON ) )
-    if ( std::abs(mccp->PdgCode()) == 14 || mccp->Process()!="primary" || mccp->StatusCode()!=1 || mccp->Mother()>0 ) continue; //we only want primaries
-    	float hits_this_mcp = 0;
-	std::vector< art::Ptr < recob::Hit> > hits_mcp = hitsFromMCP.at( &mccp - &mcList[0] );
-	for (auto const& hit: hits_mcp) {
-	//bool max = hitsFromMCP.data( &mccp - &mcList[0] ).at( &hit - &hits_mcp[0] )->isMaxIDE;
-	//bool max2 = hitsFromMCP.data( &mccp - &mcList[0] ).at( &hit - &hits_mcp[0] )->isMaxIDEN;
-	//hits_this_mcp += hitsFromMCP.data( &mccp - &mcList[0] ).at( &hit - &hits_mcp[0] )->ideNFraction * hit->Integral() ;
-	hits_this_mcp += hitsFromMCP.data( &mccp - &mcList[0] ).at( &hit - &hits_mcp[0] )->numElectrons ;
-	cout << "hits " << hitsFromMCP.data( &mccp - &mcList[0] ).at( &hit - &hits_mcp[0] )->energy << endl; 
-	cout << "size " << hitsFromMCP.data( &mccp - &mcList[0] ).size() << endl; 
-	cout << "ide " << hitsFromMCP.data( &mccp - &mcList[0] ).at( &hit - &hits_mcp[0] )->ideFraction << endl; 
-	cout << "electrons " << hitsFromMCP.data( &mccp - &mcList[0] ).at( &hit - &hits_mcp[0] )->numElectrons << endl; 
-	//if ( hit->View() == geo::kCollection ) hits_this_mcp += hit->Integral() ;
-	}
-	float tmp = 0;
-    for (auto const& aa: mcHitList) {
-	    	for ( unsigned i=0; i<aa->size(); i++) {
-	        if ( aa->at(i).PartTrackId() == mccp->TrackId())
-			tmp+=aa->at(i).Charge();
-		}
-    }
-    	//std::cout << "This MCP pdg=" << mccp->PdgCode() << " reco-matched hits: " << hits_this_mcp << " mctruth hits: " << tmp << std:: endl;
-
-    tmp=0;
-    for (auto const& simchannel: simChannelList) {
-	    auto ides = simchannel->TrackIDEs(0,100000);
-	    for (auto const& ide: ides) {
-		if (ide.trackID == mccp->TrackId()) tmp+=ide.numElectrons;
-	    }
-    	}
-    	std::cout << "This MCP pdg=" << mccp->PdgCode() << " reco-matched hits: " << hits_this_mcp/all_hits_mcp << " mctruth hits: " << tmp/tot_electrons << std:: endl;
-    }
-
-    for (auto const& aa: mcHitList) {
-	    std::cout << "ch: " << aa->Channel() << " MCHitCollection size " << aa->size() << std::endl;
-	    	for ( unsigned i=0; i<aa->size(); i++) {
-	        std::cout << "charge " << aa->at(i).Charge() << " partID " << aa->at(i).PartTrackId() << std::endl;
-		}
-*/	    
-    //for (auto const& bb: aa) {
-	//    std::cout << "charge " << bb->Charge() << " partID " << bb->PartTrackId() << std::endl;
-   // }
-   // }
-  //std::cout << ">>>><<<< TOTAL HITS: " << hitList.size() << " HITS FROM MCPS: " << all_hits_mcp << " TOTAL HITS FROM TRACKS: " << all_hits_tracks << " TOTAL MC HITS: " << mcHitList.size() << std::endl;
-
-  /*
-  // loop tracks and do truth matching to find neutrino induced muon
-  recoNimID = -1;
-  bool isMatched = false; 
-  for (auto const& thisTrack : (*trackHandle)) {
-
-    std::vector< art::Ptr<simb::MCParticle> > mcps = mcpsFromTracks.at(thisTrack.ID());
-
-    for (auto const& thisMcp : mcps){
-
-      if (thisMcp->PdgCode() == 13 && thisMcp->Process() == "primary" && _rbutilInstance.isInTPC(thisMcp) == true && isMatched == false){
-        recoNimID = thisMcp->TrackId();
-        nimMatchedMomentum = _rbutilInstance.getMomentumVector(thisMcp);
-        muMatchedMcpMomentum->Fill(thisMcp->P());
-        isMatched = true;
-      }
-
-    }
-
-  }
-
-  int it = 0;
-  for (auto const& thisTrack : (*trackHandle)) {
-
-    thisRecoLength.push_back(thisTrack.Length());
-
-    std::vector< art::Ptr<simb::MCParticle> > mcps = mcpsFromTracks.at(it);
-    isRecoTrackTruthMatched.push_back(mcps.size());
-
-    // check to make sure two reconstructed tracks aren't matching to the same mcp
-    // i.e. should remove broken tracks
-    bool isMatched = false;
-    for (auto const& thisMcp : mcps){
-
-      for (size_t i = 0; i < matchIDChecker.size(); i++){
-
-        if (thisMcp->TrackId() == matchIDChecker.at(i))
-          isMatched = true;
-
-      }
-      matchIDChecker.push_back(thisMcp->TrackId());
-
-      if (isMatched == true) continue;
-
-      auto thisMcpCleanliness = mcpsFromTracks.data(0).at(0)->cleanliness;
-      //auto thisMcpCompleteness = mcpsFromTracks.data(0).at(0)->completeness; // gives nonsense
-
-      // filling cleanliness plots
-      if (thisMcp->Process() == "primary" && std::abs(thisMcp->PdgCode()) == 2212)
-        trackCleanlinessPrimaryProton->Fill(thisMcpCleanliness);
-      else if (thisMcp->Process() == "primary" 
-          && ((std::abs(thisMcp->PdgCode()) == 13) 
-            || (std::abs(thisMcp->PdgCode()) == 211)))
-        trackCleanlinessPrimaryMuonOrPion->Fill(thisMcpCleanliness);
-      else if (thisMcp->Process() == "primary" && std::abs(thisMcp->PdgCode()) == 11)
-        trackCleanlinessPrimaryElectron->Fill(thisMcpCleanliness);
-      else if (thisMcp->Process() == "conv")
-        trackCleanlinessConv->Fill(thisMcpCleanliness);
-      else if ((thisMcp->Process() == "neutronInelastic")
-          || (thisMcp->Process() == "protonInelastic")
-          || (thisMcp->Process() == "pi+Inelastic"))
-        trackCleanlinessInelastic->Fill(thisMcpCleanliness);
-      else if (thisMcp->Process() == "muIoni")
-        trackCleanlinessMuIoni->Fill(thisMcpCleanliness);
-      else trackCleanlinessOther->Fill(thisMcpCleanliness);
-
-      if ((thisMcp->Process() != "primary")
-          || (std::abs(thisMcp->PdgCode()) == 2112)
-          || (std::abs(thisMcp->PdgCode()) == 14)
-          || (std::abs(thisMcp->PdgCode()) == 12)
-          || (std::abs(thisMcp->PdgCode()) == 22)
-          || (std::abs(thisMcp->PdgCode()) == 111)
-          || (std::abs(thisMcp->PdgCode()) == 11) // remove anything which is shower like for now
-          || (std::abs(thisMcp->PdgCode()) == 2212 && thisMcp->P() < 0.2)
-          || (_rbutilInstance.isInTPC(thisMcp)) == false) continue;
-
-#if isDebug == 1
-      std::cout << "MATCH CLEANLINESS: " << thisMcpCleanliness << std::endl;
-      std::cout << "MATCH COMPLETENESS: " << thisMcpCompleteness << std::endl;
-    
-      std::cout << "---- MCParticle Information ----"
-        << "\nTrack ID   : " << thisMcp->TrackId() 
-        << "\nPdgCode    : " << thisMcp->PdgCode()
-        << "\nProcess    : " << thisMcp->Process()
-        << "\nStatusCode : " << thisMcp->StatusCode()
-        << "\nMother Pdg : " << thisMcp->Mother()
-        << "\nPx, Py, Pz : " << thisMcp->Px() << ", " << thisMcp->Py() << ", " << thisMcp->Pz()
-        << std::endl;
-#endif
-
-      // angular information
-
-      thisMatchedMomentum = _rbutilInstance.getMomentumVector(thisMcp); 
-      thisMatchedLength   = thisMcp->Trajectory().TotalLength();
-
-      // all tracks
-      if (thisMcp->Process() == "primary"){
-
-        std::vector<double> zDir = {0,0,1};
-
-        thisZmatchedAngleYZ = _rbutilInstance.getAngle(zDir, thisMatchedMomentum, _rbutilInstance, "yz");
-
-        allMatchedMcpLengthAngle->Fill(thisZmatchedAngleYZ, thisMatchedLength);
-
-
-      }
-
-      // specifically protons
-      if (thisMcp->PdgCode() == 2212 && thisMcp->Process() == "primary" && recoNimID != -1){
-
-        thisNimMatchedMcpAngle = _rbutilInstance.getAngle(nimMatchedMomentum, thisMatchedMomentum, _rbutilInstance, "no");
-        thisNimMatchedMcpAngles.push_back(thisNimMatchedMcpAngle);
-
-        thisNimMatchedMcpAngleXZ = _rbutilInstance.getAngle(nimMatchedMomentum, thisMatchedMomentum, _rbutilInstance, "xz");
-        thisNimMatchedMcpAnglesXZ.push_back(thisNimMatchedMcpAngleXZ);
-
-        mupMatchedMcpAnglePMom->Fill(thisNimMatchedMcpAngleXZ, thisMcp->P());
-      }
-
-
-    }
-    it++;
-  } // trackHandle
-
-  //------------------------------
-  // Showers
-  //------------------------------
-
-  it = 0;
-  for (auto const& thisShower : (*showerHandle)){
-
-    // this is to stop LArSoft complaining...
-    std::cout << "Found shower with ID " << thisShower.ID() << std::endl; 
-    std::vector< art::Ptr<simb::MCParticle> > mcps = mcpsFromShowers.at(it);
-
-    isRecoShowerTruthMatched.push_back(mcps.size());
-
-    for (auto const& thisMcp : mcps){
-
-      auto thisMcpCleanliness = mcpsFromShowers.data(0).at(0)->cleanliness;
-      //auto thisMcpCompleteness = mcpsFromShowers.data(0).at(0)->completeness;
-#if isDebug == 1
-      std::cout << "MATCH CLEANLINESS: " << thisMcpCleanliness << std::endl;
-      std::cout << "MATCH COMPLETENESS: " << thisMcpCompleteness << std::endl;
-      std::cout << "---- MCParticle Information ----"
-        << "\nTrack ID   : " << thisMcp->TrackId() 
-        << "\nPdgCode    : " << thisMcp->PdgCode()
-        << "\nProcess    : " << thisMcp->Process()
-        << "\nStatusCode : " << thisMcp->StatusCode()
-        << "\nMother Pdg : " << thisMcp->Mother()
-        << "\nPx, Py, Pz : " << thisMcp->Px() << ", " << thisMcp->Py() << ", " << thisMcp->Pz()
-        << std::endl;
-#endif 
-
-      if (thisMcp->Process() == "primary" && std::abs(thisMcp->PdgCode()) == 2212)
-        showerCleanlinessPrimaryProton->Fill(thisMcpCleanliness);
-      else if (thisMcp->Process() == "primary" 
-          && ((std::abs(thisMcp->PdgCode()) == 13) 
-            || (std::abs(thisMcp->PdgCode()) == 211)))
-        showerCleanlinessPrimaryMuonOrPion->Fill(thisMcpCleanliness);
-      else if (thisMcp->Process() == "primary" && std::abs(thisMcp->PdgCode()) == 11)
-        showerCleanlinessPrimaryElectron->Fill(thisMcpCleanliness);
-      else if (thisMcp->Process() == "conv")
-        showerCleanlinessConv->Fill(thisMcpCleanliness);
-      else if ((thisMcp->Process() == "neutronInelastic")
-          || (thisMcp->Process() == "protonInelastic")
-          || (thisMcp->Process() == "pi+Inelastic"))
-        showerCleanlinessInelastic->Fill(thisMcpCleanliness);
-      else if (thisMcp->Process() == "muIoni")
-        showerCleanlinessMuIoni->Fill(thisMcpCleanliness);
-      else showerCleanlinessOther->Fill(thisMcpCleanliness);
-
-
-    }
-    it++;
-  } // showerHandle
-
-  //---------------------------
-  // Hits
-  //---------------------------
-  
-  for (auto const& thisHit : (*hitHandle)){
-
-    if (trueVertexXZPosition.size() == 0) break;
-
-    // put hit into hitlist
-    std::pair<int, float> hitPair;
-    hitPair.first = (int)thisHit.Channel();
-    hitPair.second = (float)thisHit.PeakTime();
-
-    std::vector<float> hitXZpos = _rbutilInstance.getHitXZPosition(thisHit, _rbutilInstance);
-  
-    bool isHitInRange = _rbutilInstance.isHitNearVertex(trueVertexXZPosition, hitXZpos);
-
-    if (isHitInRange == true)
-      allHitPositions.push_back(hitPair);
-
-  }
-
-  //---------------------------
-  // Clusters
-  //---------------------------
- 
-  it = 0;
-  for (auto const& thisCluster : (*clusterHandle)){
-    if (trueVertexXZPosition.size() == 0) break;
-
-    std::cout << thisCluster.ID() << std::endl;
-
-    // get associated hits
-    std::vector< art::Ptr< recob::Hit > > hits = hitsFromClusters.at(it);
-
-    for (auto const& thisHit : hits){
-
-      int isMatched = 0;
-      int hitChannel = thisHit->Channel();
-      int hitPeakTime = thisHit->PeakTime();
-
-      std::vector<float> hitXZpos = _rbutilInstance.getHitXZPosition(*thisHit, _rbutilInstance);
-
-      bool isHitInRange = _rbutilInstance.isHitNearVertex(trueVertexXZPosition, hitXZpos);
-
-      if (isHitInRange == false) continue;
-
-      for (size_t i = 0; i < allHitPositions.size(); i++){
-
-        if (hitChannel == allHitPositions.at(i).first && hitPeakTime == allHitPositions.at(i).second){
-
-          isMatched = 1;
-          hitMatchScore->Fill(isMatched);
-        
-        }
-
-      }
-
-
-    }
-
-    hitMatchScore->SetBinContent(0, (int)allHitPositions.size() - hitMatchScore->GetBinContent(1));
-
-    it++;
-  }
-  */
 	
   } // good muon
 
@@ -2550,10 +2097,10 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
     bool is_pion=false;
     bool lowmomentum_p = false;
     for (unsigned i = 0; i < fpdg.size(); i++) {
-	    if ( fpdg[i] == 13 ) { //ismuon
+	    if ( fpdg[i] == fLeptonPdg ) { //ismuon
 	    hmuon_length_all->Fill( flength[i] );
 	    hmuon_spectrum_all->Fill( fkinE[i] );
-	    if ( fis_tracked[i] &&  fmuon_dqdx.size() != 0 ) { //want that the muon is well matched and w/ dqdx info
+	    if ( ((!fIsNue && fis_tracked[i]) || (fIsNue && fis_shower_matched[i])) &&  fmuon_dqdx.size() != 0 ) { //want that the muon is well matched and w/ dqdx info
 		muon_pos = i; 
 	    	hmuon_length->Fill( flength[i] );
 	    	hmuon_spectrum->Fill( fkinE[i] );
@@ -2581,9 +2128,9 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
     n_muons++;
 
     //check if the neutrino reco'ed vertex is there 
-    if ( !(abs(fnu_reco_x+1)<DBL_EPSILON && abs(fnu_reco_y+1)<DBL_EPSILON && abs(fnu_reco_z+1)<DBL_EPSILON) ) 
+    if ( !(abs(fnu_reco_x+1)<DBL_EPSILON && std::abs(fnu_reco_y+1)<DBL_EPSILON && std::abs(fnu_reco_z+1)<DBL_EPSILON) ) 
 	h_vertex_resolution_neutrino->Fill( sqrt( pow(fnu_reco_x - fneutrino_x,2) + pow(fnu_reco_y - fneutrino_y,2) + pow(fnu_reco_z - fneutrino_z,2) ) );	    
-    if ( !(abs(fnu_reco_fitter_x+1)<DBL_EPSILON && abs(fnu_reco_fitter_y+1)<DBL_EPSILON && abs(fnu_reco_fitter_z+1)<DBL_EPSILON) ) {
+    if ( !(abs(fnu_reco_fitter_x+1)<DBL_EPSILON && std::abs(fnu_reco_fitter_y+1)<DBL_EPSILON && std::abs(fnu_reco_fitter_z+1)<DBL_EPSILON) ) {
 	h_vertexfitter_resolution_neutrino->Fill( sqrt( pow(fnu_reco_fitter_x - fneutrino_x,2) + pow(fnu_reco_fitter_y - fneutrino_y,2) + pow(fnu_reco_fitter_z - fneutrino_z,2) ) );	    
 	h_vertexfitter_chi2ndf_neutrino->Fill( fnu_reco_fitter_chi2ndf );
     }
@@ -2602,11 +2149,11 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
    	    hproton_nhits_all->Fill( fnhits[j] );
    	    hproton_nhits_CP_all->Fill( freco_mcp_collection_hits[j] );
 	    
-	    if ( abs( fcostheta_muon[j] ) > sqrt(3)/2. ) {
+	    if ( std::abs( fcostheta_muon[j] ) > sqrt(3)/2. ) {
 	    hproton_l_all_angle1->Fill( flength[j] );
 	    hproton_kinE_all_angle1->Fill( fkinE[j] );
 	    hproton_nhits_all_angle1->Fill( freco_mcp_collection_hits[j] ); //FIXME
-	    } else if ( abs( fcostheta_muon[j] ) >= 0.5 && abs( fcostheta_muon[j] ) <= sqrt(3)/2. ) { 
+	    } else if ( std::abs( fcostheta_muon[j] ) >= 0.5 && std::abs( fcostheta_muon[j] ) <= sqrt(3)/2. ) { 
 	    hproton_l_all_angle2->Fill( flength[j] );
 	    hproton_kinE_all_angle2->Fill( fkinE[j] );
 	    hproton_nhits_all_angle2->Fill( freco_mcp_collection_hits[j] ); //FIXME
@@ -2635,11 +2182,11 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
    		hproton_nhits_theta_mu->Fill ( fnhits[j], acos(fcostheta_muon[j]) ) ;
    		hproton_nhits_CP_theta_mu->Fill( freco_mcp_collection_hits[j], acos(fcostheta_muon[j]) );
 	    
-		if ( abs( fcostheta_muon[j] ) > sqrt(3)/2. ) { //theta < 30degrees
+		if ( std::abs( fcostheta_muon[j] ) > sqrt(3)/2. ) { //theta < 30degrees
 	    		hproton_l_tracked_angle1->Fill( flength[j] );
 	    		hproton_kinE_tracked_angle1->Fill( fkinE[j] );
 	    		hproton_nhits_tracked_angle1->Fill( freco_mcp_collection_hits[j] ); //FIXME
-	    	} else if ( abs( fcostheta_muon[j] ) >= 0.5 && abs( fcostheta_muon[j] ) <= sqrt(3)/2. ) { 
+	    	} else if ( std::abs( fcostheta_muon[j] ) >= 0.5 && std::abs( fcostheta_muon[j] ) <= sqrt(3)/2. ) { 
 	    		hproton_l_tracked_angle2->Fill( flength[j] );
 	    		hproton_kinE_tracked_angle2->Fill( fkinE[j] );
 	    		hproton_nhits_tracked_angle2->Fill( freco_mcp_collection_hits[j] ); //FIXME
@@ -2676,7 +2223,7 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
 	hproton_merged_not_merged->Fill(1., double(count_not_tracked) );
         
  	//neutrino vertex resolution vs proton recon performance:
-    	if ( !(abs(fnu_reco_x+1)<DBL_EPSILON && abs(fnu_reco_y+1)<DBL_EPSILON && abs(fnu_reco_z+1)<DBL_EPSILON) ) {
+    	if ( !(abs(fnu_reco_x+1)<DBL_EPSILON && std::abs(fnu_reco_y+1)<DBL_EPSILON && std::abs(fnu_reco_z+1)<DBL_EPSILON) ) {
 	int tot_protons = count_not_tracked + count_tracked ;
 	h_vertex_resolution_vs_not_tracked_above20MeV->Fill( sqrt( pow(fnu_reco_x - fneutrino_x,2) + pow(fnu_reco_y - fneutrino_y,2) + pow(fnu_reco_z - fneutrino_z,2) ), double(count_not_tracked)/tot_protons );
 	h_vertex_resolution_vs_not_tracked->Fill( sqrt( pow(fnu_reco_x - fneutrino_x,2) + pow(fnu_reco_y - fneutrino_y,2) + pow(fnu_reco_z - fneutrino_z,2) ), double(count_not_tracked + low_protons)/ (tot_protons+low_protons) );
@@ -2702,7 +2249,7 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
 		h_dqdx_not_merged_service->Reset();
 
 		hmuon_pos_res_goodprotons->Fill( sqrt( pow( freco_startx[muon_pos]- fstart_x[muon_pos] ,2) + pow( freco_starty[muon_pos]- fstart_y[muon_pos] ,2) + pow( freco_startz[muon_pos]- fstart_z[muon_pos] ,2) ) );
-    		if ( !(abs(fnu_reco_x+1)<DBL_EPSILON && abs(fnu_reco_y+1)<DBL_EPSILON && abs(fnu_reco_z+1)<DBL_EPSILON) ) 
+    		if ( !(abs(fnu_reco_x+1)<DBL_EPSILON && std::abs(fnu_reco_y+1)<DBL_EPSILON && std::abs(fnu_reco_z+1)<DBL_EPSILON) ) 
 	        h_vertex_resolution_neutrino_not_merged->Fill( sqrt( pow(fnu_reco_x - fneutrino_x,2) + pow(fnu_reco_y - fneutrino_y,2) + pow(fnu_reco_z - fneutrino_z,2) ) );	    
 	        h_vertexfitter_resolution_neutrino_not_merged->Fill( sqrt( pow(fnu_reco_fitter_x - fneutrino_x,2) + pow(fnu_reco_fitter_y - fneutrino_y,2) + pow(fnu_reco_fitter_z - fneutrino_z,2) ) );	    
 	        h_vertexfitter_chi2ndf_neutrino_not_merged->Fill( fnu_reco_fitter_chi2ndf  );	    
@@ -2714,7 +2261,7 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
 	    	float res_fitter = min ( sqrt( pow(freco_vertexfitter_x[j] - fstart_x[j],2) + pow(freco_vertexfitter_y[j] - fstart_y[j],2) + pow(freco_vertexfitter_z[j] - fstart_z[j],2)) ,
 					sqrt( pow(freco_vertexfitter_x[j] - fend_x[j],2) + pow(freco_vertexfitter_y[j] - fend_y[j],2) + pow(freco_vertexfitter_z[j] - fend_z[j],2)) );
 		
-		if ( fpdg[j]==13 ) {
+		if ( fpdg[j]==fLeptonPdg ) {
 			h_vertex_resolution_muon_not_merged->Fill( res );
 			h_vertexfitter_resolution_muon_not_merged->Fill( res_fitter );
 			h_vertexfitter_chi2ndf_muon_not_merged->Fill( freco_vertexfitter_chi2ndf[j] );
@@ -2744,7 +2291,7 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
 		h_dqdx_merged_service->Reset();
 		    
 		hmuon_pos_res_badprotons->Fill( sqrt( pow( freco_startx[muon_pos]- fstart_x[muon_pos] ,2) + pow( freco_starty[muon_pos]- fstart_y[muon_pos] ,2) + pow( freco_startz[muon_pos]- fstart_z[muon_pos] ,2) ) );
-    		if ( !(abs(fnu_reco_x+1)<DBL_EPSILON && abs(fnu_reco_y+1)<DBL_EPSILON && abs(fnu_reco_z+1)<DBL_EPSILON) ) {
+    		if ( !(abs(fnu_reco_x+1)<DBL_EPSILON && std::abs(fnu_reco_y+1)<DBL_EPSILON && std::abs(fnu_reco_z+1)<DBL_EPSILON) ) {
 	        h_vertex_resolution_neutrino_merged->Fill( sqrt( pow(fnu_reco_x - fneutrino_x,2) + pow(fnu_reco_y - fneutrino_y,2) + pow(fnu_reco_z - fneutrino_z,2) ) );	    
 	        h_vertexfitter_resolution_neutrino_merged->Fill( sqrt( pow(fnu_reco_fitter_x - fneutrino_x,2) + pow(fnu_reco_fitter_y - fneutrino_y,2) + pow(fnu_reco_fitter_z - fneutrino_z,2) ) );	    
 	        h_vertexfitter_chi2ndf_neutrino_merged->Fill( fnu_reco_fitter_chi2ndf );	    
@@ -2756,7 +2303,7 @@ int recohelper::RecoBenchmarker::FillAnalysisHistograms( int& count_tracked, int
 	    	float res_fitter = min ( sqrt( pow(freco_vertexfitter_x[j] - fstart_x[j],2) + pow(freco_vertexfitter_y[j] - fstart_y[j],2) + pow(freco_vertexfitter_z[j] - fstart_z[j],2)) ,
 					sqrt( pow(freco_vertexfitter_x[j] - fend_x[j],2) + pow(freco_vertexfitter_y[j] - fend_y[j],2) + pow(freco_vertexfitter_z[j] - fend_z[j],2)) );
 		
-		if ( fpdg[j]==13 ) {
+		if ( fpdg[j]==fLeptonPdg ) {
 			h_vertex_resolution_muon_merged->Fill( res );
 			h_vertexfitter_resolution_muon_merged->Fill( res_fitter );
 			h_vertexfitter_chi2ndf_muon_merged->Fill( freco_vertexfitter_chi2ndf[j] );
@@ -2904,73 +2451,8 @@ void recohelper::RecoBenchmarker::endJob()
    hproton_theta_mu_eff = (TH1D*) h_theta_mu_tracked->Clone("proton_theta_mu_eff");
    hproton_theta_mu_eff->Divide(hproton_theta_mu);
    hproton_theta_mu_eff->Write();
-/*
-  // mu efficiencies
-  muMomentumEfficiency =
-    (TH1D*)muMatchedMcpMomentum->Clone("muMomentumEfficiency");
-  muMomentumEfficiency->Divide(muMcpMomentum);
-
-  // mupangleMomentumEfficiencies
-  mupAngleMomentumEfficiency = 
-    (TH2D*)mupMatchedMcpAnglePMom->Clone("mupAngleMomentumEfficiency");
-  mupAngleMomentumEfficiency->Divide(mupMcpAnglePMom);
-
-  // pMomentumEfficiencies
-  mupAngleMomentumEfficiency 
-    =(TH2D*)mupMatchedMcpAnglePMom->Clone("mupAngleMomentumEfficiency");
-  mupAngleMomentumEfficiency->Divide(mupMcpAnglePMom);
-
-  pMatchedMcpProjectedAngle = (TH1D*)mupMatchedMcpAnglePMom->ProjectionY();
-  pMcpProjectedAngle = (TH1D*)mupMcpAnglePMom->ProjectionY();
-
-  pProjectedAngleEfficiency =
-    (TH1D*)pMatchedMcpProjectedAngle->Clone("pProjectedAngleEfficiency");
-  pProjectedAngleEfficiency->Divide(pMcpProjectedAngle);
-
-  pMatchedMcpProjectedMomentum = (TH1D*)mupMatchedMcpAnglePMom->ProjectionX();
-  pMcpProjectedMomentum = (TH1D*)mupMcpAnglePMom->ProjectionX();
-
-  pProjectedMomentumEfficiency =
-    (TH1D*)pMatchedMcpProjectedMomentum->Clone("pProjectedMomentumEfficiency");
-  pProjectedMomentumEfficiency->Divide(pMcpProjectedMomentum);
-
-  //trackAngleLengthEfficiencies
-  allLengthAngleEfficiency 
-    = (TH2D*)allMatchedMcpLengthAngle->Clone("allLengthAngleEfficiency");
-  allLengthAngleEfficiency->Divide(allMcpLengthAngleYZ);
-
-  allMatchedMcpProjectedLength = (TH1D*)allMatchedMcpLengthAngle->ProjectionY();
-  allMcpProjectedLength = (TH1D*)allMcpLengthAngleYZ->ProjectionY();
-
-  allProjectedLengthEfficiency = 
-    (TH1D*)allMatchedMcpProjectedLength->Clone("allProjectedLengthEfficiency");
-  allProjectedLengthEfficiency->Divide(allMcpProjectedLength);
-
-  allMatchedMcpProjectedAngle = (TH1D*)allMatchedMcpLengthAngle->ProjectionX();
-  allMcpProjectedAngle = (TH1D*)allMcpLengthAngleYZ->ProjectionX();
-
-  allProjectedAngleEfficiency =
-    (TH1D*)allMatchedMcpProjectedAngle->Clone("allProjectedAngleEfficiency");
-  allProjectedAngleEfficiency->Divide(allMcpProjectedAngle);
-
-  // aaaaand write...
-  muMomentumEfficiency->Write();
-  mupAngleMomentumEfficiency->Write();
-  pMatchedMcpProjectedMomentum->Write();
-  pMcpProjectedMomentum->Write();
-  pProjectedMomentumEfficiency->Write();
-  pMatchedMcpProjectedAngle->Write();
-  pMcpProjectedAngle->Write();
-  pProjectedAngleEfficiency->Write();
-  allLengthAngleEfficiency->Write();
-  allMatchedMcpProjectedLength->Write();
-  allMcpProjectedLength->Write();
-  allProjectedLengthEfficiency->Write();
-  allMatchedMcpProjectedAngle->Write();
-  allMcpProjectedAngle->Write();
-  allProjectedAngleEfficiency->Write();
-*/
-  FillCumulativeHistograms();
+  
+   FillCumulativeHistograms();
 
 }
 
@@ -3049,24 +2531,6 @@ void recohelper::RecoBenchmarker::clear_vectors(){
    fhit_mismatch_pdg.clear();
 
 
-
-  // setup variables
-
-  isRecoTrackTruthMatched.clear(); 
-  isRecoShowerTruthMatched.clear();
-  matchIDChecker.clear();
-  thisNimMcpAngles.clear();
-  thisNimMcpAnglesXZ.clear();
-  thisMcpMomentum.clear();
-  nimMcpMomentum.clear();
-  thisMcpLength.clear();
-  thisNimMatchedMcpAngles.clear();
-  thisNimMatchedMcpAnglesXZ.clear();
-  nimMatchedMomentum.clear();
-  thisRecoLength.clear();
-  trueVertexXZPosition.clear();
-  allHitPositions.clear();
-  
   /* //info coming from the tracking algorithm - when there is NO mc truth
   ffake_is_tracked.clear();
   ffake_is_mismatched.clear();
